@@ -3,7 +3,6 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { formatBRL, formatPct } from '@/lib/utils/currency'
 import { MONTHS_FULL } from '@/lib/utils/dates'
-import { TrendingUp, TrendingDown, Wallet } from 'lucide-react'
 import type { MonthlyFlowRow } from '@/types/financial'
 
 interface CurrentMonthSummaryProps {
@@ -11,13 +10,55 @@ interface CurrentMonthSummaryProps {
   selectedMonth?: number | null
 }
 
+function Bar({ pct, color }: { pct: number; color: string }) {
+  return (
+    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+      <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(pct * 100, 100)}%` }} />
+    </div>
+  )
+}
+
+function Row({
+  label, value, pct, color, bold, dimmed, sub,
+}: {
+  label: string
+  value: number
+  pct?: number
+  color?: string
+  bold?: boolean
+  dimmed?: boolean
+  sub?: string
+}) {
+  return (
+    <div className={`space-y-1 ${dimmed ? 'opacity-50' : ''}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {color && <span className={`h-2 w-2 rounded-full shrink-0 ${color}`} />}
+          <span className={`text-xs truncate ${bold ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>{label}</span>
+          {sub && <span className="text-[10px] text-muted-foreground hidden sm:inline">{sub}</span>}
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {pct !== undefined && pct > 0 && (
+            <span className="text-[11px] text-muted-foreground tabular-nums w-10 text-right">{formatPct(pct)}</span>
+          )}
+          <span className={`text-sm tabular-nums ${bold ? 'font-bold' : 'font-medium'} ${color?.includes('green') ? 'text-green-600' : color?.includes('red') ? 'text-red-600' : color?.includes('orange') ? 'text-orange-600' : ''}`}>
+            {formatBRL(value)}
+          </span>
+        </div>
+      </div>
+      {pct !== undefined && pct > 0 && color && (
+        <Bar pct={pct} color={color} />
+      )}
+    </div>
+  )
+}
+
 export function CurrentMonthSummary({ rows, selectedMonth }: CurrentMonthSummaryProps) {
-  const now = new Date()
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
   const currentMonth = now.getMonth() + 1
   const currentYear = now.getFullYear()
 
   const targetMonth = selectedMonth ?? currentMonth
-  // Pega o mês selecionado; se não tiver dados, pega o último com dados
   const row =
     rows.find((r) => r.month === targetMonth) ??
     [...rows].reverse().find((r) => r.income > 0 || r.fixed + r.variable > 0)
@@ -25,119 +66,119 @@ export function CurrentMonthSummary({ rows, selectedMonth }: CurrentMonthSummary
   if (!row) return null
 
   const totalOut = row.fixed + row.variable + row.loanPayments
-  const commitPct = row.income > 0 ? totalOut / row.income : 0
+  const income = row.income
   const isDeficit = row.surplus < 0
-
-  const commitColor =
-    commitPct >= 1 ? 'bg-red-500' :
-    commitPct >= 0.8 ? 'bg-orange-500' :
-    commitPct >= 0.6 ? 'bg-yellow-500' :
-    'bg-green-500'
-
-  const surplusColor = isDeficit ? 'text-red-600' : 'text-green-600'
-
-  const monthLabel = `${MONTHS_FULL[row.month - 1]} ${currentYear}`
   const isPast = row.month < currentMonth
   const isFuture = row.month > currentMonth
 
+  const pctOf = (v: number) => income > 0 ? v / income : 0
+
   return (
-    <Card className="overflow-hidden border-0 shadow-sm bg-gradient-to-br from-background to-muted/30">
-      <CardContent className="p-6">
-        <div className="flex items-center gap-2 mb-5">
-          <Wallet className="h-4 w-4 text-muted-foreground" />
-          <p className="text-sm font-medium text-muted-foreground">
-            Resumo de {monthLabel}
-            {isPast && <span className="ml-1.5 text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">realizado</span>}
-            {isFuture && <span className="ml-1.5 text-[10px] bg-primary/10 px-1.5 py-0.5 rounded text-primary">projeção</span>}
-          </p>
-        </div>
-
-        {/* Três valores principais */}
-        <div className="grid grid-cols-3 gap-4 mb-5">
-          {/* Entradas */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5 text-green-600">
-              <TrendingUp className="h-3.5 w-3.5" />
-              <span className="text-xs font-medium uppercase tracking-wide">Entradas</span>
-            </div>
-            <p className="text-2xl sm:text-3xl font-bold tabular-nums text-green-600">
-              {formatBRL(row.income)}
+    <Card className="overflow-hidden">
+      <CardContent className="p-5 space-y-4">
+        {/* Cabeçalho */}
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <p className="text-sm font-semibold">
+              Resumo de {MONTHS_FULL[row.month - 1]} {currentYear}
             </p>
-            <p className="text-[11px] text-muted-foreground">tudo que entra no mês</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Detalhamento completo de entradas e saídas
+            </p>
           </div>
-
-          {/* Saídas */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5 text-red-600">
-              <TrendingDown className="h-3.5 w-3.5" />
-              <span className="text-xs font-medium uppercase tracking-wide">Saídas</span>
-            </div>
-            <p className="text-2xl sm:text-3xl font-bold tabular-nums text-red-600">
-              {formatBRL(totalOut)}
-            </p>
-            <p className="text-[11px] text-muted-foreground">despesas + parcelas</p>
-          </div>
-
-          {/* Sobra */}
-          <div className="space-y-1">
-            <div className={`flex items-center gap-1.5 ${surplusColor}`}>
-              <span className="text-xs font-medium uppercase tracking-wide">
-                {isDeficit ? 'Déficit' : 'Sobra'}
-              </span>
-            </div>
-            <p className={`text-2xl sm:text-3xl font-bold tabular-nums ${surplusColor}`}>
-              {formatBRL(Math.abs(row.surplus))}
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              {isDeficit ? 'gastando mais do que ganha' : `${formatPct(row.savingsRate)} da renda guardada`}
-            </p>
+          <div className="flex gap-2">
+            {isPast && <span className="text-[10px] bg-muted px-2 py-0.5 rounded font-medium text-muted-foreground">realizado</span>}
+            {isFuture && <span className="text-[10px] bg-primary/10 px-2 py-0.5 rounded font-medium text-primary">projeção</span>}
+            {!isPast && !isFuture && <span className="text-[10px] bg-green-500/10 px-2 py-0.5 rounded font-medium text-green-700">mês atual</span>}
           </div>
         </div>
 
-        {/* Barra de comprometimento */}
-        <div className="space-y-2 mb-5">
-          <div className="flex justify-between text-[11px] text-muted-foreground">
-            <span>{formatPct(Math.min(commitPct, 1))} da renda comprometida</span>
-            <span>{formatBRL(row.income - totalOut > 0 ? row.income - totalOut : 0)} disponível</span>
-          </div>
-          <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all ${commitColor}`}
-              style={{ width: `${Math.min(commitPct * 100, 100)}%` }}
-            />
+        {/* ENTRADAS */}
+        <div className="space-y-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Entradas</p>
+          <Row label="Total de entradas" value={income} color="bg-green-500" pct={1} bold />
+        </div>
+
+        {/* SAÍDAS */}
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Saídas</p>
+
+          <Row
+            label="Despesas fixas"
+            sub="aluguel, planos, assinaturas…"
+            value={row.fixed}
+            pct={pctOf(row.fixed)}
+            color="bg-slate-400"
+            dimmed={row.fixed === 0}
+          />
+          <Row
+            label="Despesas variáveis"
+            sub="mercado, lazer, transporte…"
+            value={row.variable}
+            pct={pctOf(row.variable)}
+            color="bg-amber-400"
+            dimmed={row.variable === 0}
+          />
+          <Row
+            label="Parcelas"
+            sub="empréstimos + cartão"
+            value={row.loanPayments}
+            pct={pctOf(row.loanPayments)}
+            color="bg-orange-500"
+            dimmed={row.loanPayments === 0}
+          />
+
+          {/* Separador total saídas */}
+          <div className="flex items-center justify-between pt-1 border-t border-border">
+            <span className="text-xs font-semibold">Total de saídas</span>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] text-muted-foreground tabular-nums">{income > 0 ? formatPct(pctOf(totalOut)) : '—'}</span>
+              <span className="text-sm font-bold tabular-nums text-red-600">{formatBRL(totalOut)}</span>
+            </div>
           </div>
         </div>
 
-        {/* Breakdown detalhado */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-border">
-          <div className="space-y-0.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Fixas</p>
-            <p className="text-sm font-semibold tabular-nums">{formatBRL(row.fixed)}</p>
-            {row.income > 0 && (
-              <p className="text-[10px] text-muted-foreground">{formatPct(row.fixed / row.income)} da renda</p>
-            )}
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Variáveis</p>
-            <p className="text-sm font-semibold tabular-nums">{formatBRL(row.variable)}</p>
-            {row.income > 0 && (
-              <p className="text-[10px] text-muted-foreground">{formatPct(row.variable / row.income)} da renda</p>
-            )}
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Parcelas</p>
-            <p className="text-sm font-semibold tabular-nums text-orange-600">{formatBRL(row.loanPayments)}</p>
-            {row.income > 0 && row.loanPayments > 0 && (
-              <p className="text-[10px] text-muted-foreground">{formatPct(row.loanPayments / row.income)} da renda · empr. + cartão</p>
-            )}
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Acumulado</p>
-            <p className={`text-sm font-semibold tabular-nums ${row.accumulated >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatBRL(row.accumulated)}
+        {/* RESULTADO */}
+        <div className="rounded-lg border border-border bg-muted/20 p-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold">{isDeficit ? '⚠ Déficit' : '✓ Sobra do mês'}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {isDeficit
+                  ? 'Gastos superam a renda'
+                  : `${formatPct(row.savingsRate)} da renda disponível para poupar`}
+              </p>
+            </div>
+            <p className={`text-xl font-bold tabular-nums ${isDeficit ? 'text-red-600' : 'text-green-600'}`}>
+              {isDeficit ? '-' : '+'}{formatBRL(Math.abs(row.surplus))}
             </p>
-            <p className="text-[10px] text-muted-foreground">saldo do ano</p>
           </div>
+
+          {/* Barra visual entradas vs saídas */}
+          {income > 0 && (
+            <div className="mt-3 space-y-1">
+              <div className="h-3 w-full bg-muted rounded-full overflow-hidden flex">
+                <div className="h-full bg-slate-400" style={{ width: `${Math.min(pctOf(row.fixed) * 100, 100)}%` }} />
+                <div className="h-full bg-amber-400" style={{ width: `${Math.min(pctOf(row.variable) * 100, 100)}%` }} />
+                <div className="h-full bg-orange-500" style={{ width: `${Math.min(pctOf(row.loanPayments) * 100, 100)}%` }} />
+                <div className="h-full bg-green-400" style={{ width: `${Math.max(0, Math.min(pctOf(row.surplus) * 100, 100))}%` }} />
+              </div>
+              <div className="flex gap-3 text-[9px] text-muted-foreground flex-wrap">
+                <span><span className="inline-block w-2 h-2 rounded-full bg-slate-400 mr-1" />Fixas</span>
+                <span><span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1" />Variáveis</span>
+                <span><span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1" />Parcelas</span>
+                <span><span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1" />Sobra</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Acumulado do ano */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border">
+          <span>Saldo acumulado no ano</span>
+          <span className={`font-semibold tabular-nums ${row.accumulated >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {formatBRL(row.accumulated)}
+          </span>
         </div>
       </CardContent>
     </Card>
