@@ -5,8 +5,8 @@ import {
   generateInsights, generateStructuredInsights, buildMonthlyFlow,
 } from '@/lib/calculations/health-indicators'
 import { calculateProjection } from '@/lib/calculations/projection'
-import { buildDebtSchedule, annualDebtForFutureYear } from '@/lib/calculations/schedule'
-import type { DashboardKpis, Loan } from '@/types/financial'
+import { buildDebtSchedule, annualDebtForFutureYear, debtForFiscalMonth } from '@/lib/calculations/schedule'
+import type { DashboardKpis, Loan, ForecastMonth } from '@/types/financial'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -130,6 +130,33 @@ export async function GET(request: Request) {
   // Fluxo mensal usa o schedule completo (todos os 12 meses)
   const monthlyFlow = buildMonthlyFlow(incomeByMonth, fixedByMonth, variableByMonth, loanPaymentsByMonth)
 
+  // ── Previsão de desembolso (este mês + próximos 2) ──
+  // Empréstimos e parcelas de cartão separados, sem dupla contagem.
+  const currentCardBill = (cardsRes.data ?? []).reduce((s, c) => s + Number(c.current_balance), 0)
+  const forecast: ForecastMonth[] = []
+  for (let offset = 0; offset < 3; offset++) {
+    const m = referenceMonth + offset
+    if (m > 12) break
+    const loansOnly  = debtForFiscalMonth(loans, [], m, referenceMonth, referenceYear)
+    const cardInst   = debtForFiscalMonth([], installments, m, referenceMonth, referenceYear)
+    const expenses   = (fixedByMonth[m] ?? 0) + (variableByMonth[m] ?? 0)
+    // Mês atual: fatura real do cartão (já inclui as parcelas deste ciclo).
+    // Meses futuros: só as parcelas previstas (à-vista futuro é desconhecido).
+    const card       = offset === 0 ? currentCardBill : cardInst
+    const income     = incomeByMonth[m] ?? 0
+    const total      = expenses + loansOnly + card
+    forecast.push({
+      month: m,
+      isCurrent: offset === 0,
+      income,
+      expenses,
+      loans: loansOnly,
+      card,
+      total,
+      surplus: income - total,
+    })
+  }
+
   // Fix #I: reserva em meses = patrimônio atual / despesa mensal média
   // Usa initial_patrimony das premissas como proxy do patrimônio atual
   const monthlyExpenses = effectiveMonths > 0
@@ -147,6 +174,7 @@ export async function GET(request: Request) {
     variableExpensesPct,
     reserveMonths,
     monthlyFlow,
+    forecast,
     projectedPatrimony5y,
     creditCardMonthlyTotal: monthlyCardInstallments,
   }

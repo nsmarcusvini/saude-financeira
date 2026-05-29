@@ -12,9 +12,16 @@ const FlowChart = dynamic(
 import { InsightsList } from '@/components/dashboard/InsightsList'
 import { DashboardCreditCards } from '@/components/dashboard/DashboardCreditCards'
 import { CurrentMonthSummary } from '@/components/dashboard/CurrentMonthSummary'
+import { MonthlyForecast } from '@/components/dashboard/MonthlyForecast'
 import { formatBRL, formatPct } from '@/lib/utils/currency'
-import { TrendingUp, TrendingDown, PiggyBank, LineChart } from 'lucide-react'
-import type { DashboardKpis } from '@/types/financial'
+import { TrendingUp, TrendingDown, PiggyBank, LineChart, Shield } from 'lucide-react'
+import type { DashboardKpis, HealthStatus } from '@/types/financial'
+
+function reserveStatus(months: number): HealthStatus {
+  if (months >= 6) return 'healthy'
+  if (months >= 3) return 'attention'
+  return 'danger'
+}
 
 function LoadingSkeleton() {
   return (
@@ -69,6 +76,9 @@ export default function DashboardPage() {
 
       {/* ── 1. RESUMO DO MÊS: entradas vs saídas totais ── */}
       <CurrentMonthSummary rows={kpis.monthlyFlow} />
+
+      {/* ── 1b. PREVISÃO DE DESEMBOLSO: este mês + próximos ── */}
+      <MonthlyForecast forecast={kpis.forecast} />
 
       {/* ── 2. COMPROMISSOS: cartões + empréstimos ── */}
       {fiscalYearId && (
@@ -126,6 +136,16 @@ export default function DashboardPage() {
             value={formatPct(kpis.debtCommitmentPct)}
             description="Parcelas / renda mensal"
             status={kpis.debtCommitmentStatus}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <KpiCard
+            label="Reserva de emergência"
+            value={kpis.reserveMonths > 0 ? `${kpis.reserveMonths.toFixed(1)} meses` : '—'}
+            description={kpis.reserveMonths > 0 ? 'Meta: 6 a 12 meses' : 'Defina seu patrimônio na Projeção'}
+            status={kpis.reserveMonths > 0 ? reserveStatus(kpis.reserveMonths) : undefined}
+            icon={<Shield className="h-5 w-5" />}
           />
         </div>
       </div>

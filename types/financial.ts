@@ -78,6 +78,17 @@ export interface StructuredInsights {
   savingsTips: Insight[]
 }
 
+export interface ForecastMonth {
+  month: number        // 1-12
+  isCurrent: boolean
+  income: number
+  expenses: number     // fixas + variáveis
+  loans: number        // parcelas de empréstimo
+  card: number         // fatura real (mês atual) ou parcelas previstas (futuro)
+  total: number        // expenses + loans + card
+  surplus: number      // income - total
+}
+
 export interface DashboardKpis {
   annualIncome: number
   annualExpenses: number
@@ -92,6 +103,7 @@ export interface DashboardKpis {
   variableExpensesPct: number
   reserveMonths: number
   monthlyFlow: MonthlyFlowRow[]
+  forecast: ForecastMonth[]
   insights: string[]
   structuredInsights: StructuredInsights
   projectedPatrimony5y: number
