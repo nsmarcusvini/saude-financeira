@@ -10,31 +10,24 @@ interface BillProjectionProps {
 }
 
 function getProjection(currentBalance: number, installments: CreditCardInstallment[]) {
-  const now = new Date()
-  const result = []
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  const refMonth = now.getMonth() + 1
+  const refYear  = now.getFullYear()
+  const refAbs   = refYear * 12 + refMonth
+  const result   = []
 
   for (let offset = 0; offset < 6; offset++) {
-    const d = new Date(now.getFullYear(), now.getMonth() + offset, 1)
+    const d     = new Date(refYear, now.getMonth() + offset, 1)
     const label = MONTHS[d.getMonth()]
 
-    // Soma as parcelas com pagamento previsto para este mês,
-    // respeitando o mês de início e quantas parcelas ainda restam.
+    // Usa a mesma lógica do schedule unificado (só parcelas, sem empréstimos)
     const installmentsDue = installments.reduce((sum, inst) => {
-      const start = new Date(inst.start_year, inst.start_month - 1, 1)
-      const startOffset = Math.max(
-        0,
-        (start.getFullYear() - now.getFullYear()) * 12 + (start.getMonth() - now.getMonth()),
-      )
-      const remaining = Number(inst.installments_remaining)
-      // Paga deste mês até startOffset + remaining - 1
-      if (offset >= startOffset && offset < startOffset + remaining) {
-        return sum + Number(inst.installment_amount)
-      }
-      return sum
+      const startAbs = Number(inst.start_year) * 12 + Number(inst.start_month)
+      const mAbs     = refAbs + offset
+      if (startAbs > mAbs) return sum
+      return Number(inst.installments_remaining) > offset ? sum + Number(inst.installment_amount) : sum
     }, 0)
 
-    // No mês atual usamos a fatura real (que já contém as parcelas deste ciclo).
-    // Nos meses futuros, projetamos apenas as parcelas que ainda vão ser cobradas.
     const value = offset === 0
       ? (Number(currentBalance) > 0 ? Number(currentBalance) : installmentsDue)
       : installmentsDue

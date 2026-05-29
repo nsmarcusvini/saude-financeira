@@ -140,7 +140,7 @@ export function buildMonthlyFlow(
   incomeByMonth: Record<number, number>,
   fixedByMonth: Record<number, number>,
   variableByMonth: Record<number, number>,
-  totalMonthlyLoanPayment: number,
+  loanPaymentsByMonth: Record<number, number>,
 ): MonthlyFlowRow[] {
   const rows: MonthlyFlowRow[] = []
   let accumulated = 0
@@ -149,7 +149,7 @@ export function buildMonthlyFlow(
     const income = incomeByMonth[month] ?? 0
     const fixed = fixedByMonth[month] ?? 0
     const variable = variableByMonth[month] ?? 0
-    const loanPayments = totalMonthlyLoanPayment
+    const loanPayments = loanPaymentsByMonth[month] ?? 0
     const surplus = income - fixed - variable - loanPayments
     accumulated += surplus
     const savingsRate = income > 0 ? surplus / income : 0

@@ -1,0 +1,17 @@
+{
+  "app/(app)/dashboard/page.tsx -> @/components/dashboard/FlowChart": {
+    "id": 78081,
+    "files": [
+      "static/chunks/200.d06433e3df66d38d.js",
+      "static/chunks/82.34d3bd6d494e15f9.js",
+      "static/chunks/81.829456e2bd2b2862.js"
+    ]
+  },
+  "app/(app)/projecao/page.tsx -> @/components/projection/ProjectionChart": {
+    "id": 87477,
+    "files": [
+      "static/chunks/200.d06433e3df66d38d.js",
+      "static/chunks/477.8278ceb2af83eaf1.js"
+    ]
+  }
+}
