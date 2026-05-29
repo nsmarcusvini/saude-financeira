@@ -36,12 +36,14 @@ export async function GET(request: Request) {
 
   // Parcelamentos com datas para o schedule unificado
   const cardIds = (cardsRes.data ?? []).map((c) => c.id)
+  // Busca TODOS os parcelamentos (inclusive os recém-quitados com remaining=0)
+  // para reconstruir meses passados do fluxo corretamente.
+  // O schedule.ts usa start_month/start_year para determinar se estava ativo em cada mês.
   const installmentsRes = cardIds.length > 0
     ? await supabase
         .from('credit_card_installments')
         .select('installment_amount, installments_remaining, start_month, start_year')
         .in('credit_card_id', cardIds)
-        .gt('installments_remaining', 0)
     : { data: [] }
 
   const installments = (installmentsRes.data ?? []).map((i) => ({
@@ -129,13 +131,22 @@ export async function GET(request: Request) {
   // Fluxo mensal usa o schedule completo (todos os 12 meses)
   const monthlyFlow = buildMonthlyFlow(incomeByMonth, fixedByMonth, variableByMonth, loanPaymentsByMonth)
 
+  // Fix #I: reserva em meses = patrimônio atual / despesa mensal média
+  // Usa initial_patrimony das premissas como proxy do patrimônio atual
+  const monthlyExpenses = effectiveMonths > 0
+    ? (periodExpenses + debtForEffectiveMonths) / effectiveMonths
+    : 0
+  const reserveMonths = monthlyExpenses > 0
+    ? Math.round((Number(assumptions.initial_patrimony) / monthlyExpenses) * 10) / 10
+    : 0
+
   const kpisWithoutInsights = {
     annualIncome, annualExpenses, annualDebtPayments, annualSurplus,
     savingsRate,         savingsRateStatus:     savingsStatus(savingsRate),
     debtCommitmentPct,   debtCommitmentStatus:  debtStatus(debtCommitmentPct),
     fixedExpensesPct,    fixedExpensesStatus:   fixedExpensesStatus(fixedExpensesPct),
     variableExpensesPct,
-    reserveMonths: 0,
+    reserveMonths,
     monthlyFlow,
     projectedPatrimony5y,
     creditCardMonthlyTotal: monthlyCardInstallments,

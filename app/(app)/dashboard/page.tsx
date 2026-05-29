@@ -42,11 +42,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!fiscalYearId) return
+    const controller = new AbortController()
     setLoading(true)
-    fetch(`/api/dashboard?fiscal_year_id=${fiscalYearId}`)
+    fetch(`/api/dashboard?fiscal_year_id=${fiscalYearId}`, { signal: controller.signal })
       .then((r) => r.json())
       .then((data) => { setKpis(data); setLoading(false) })
-      .catch(() => setLoading(false))
+      .catch((err) => { if (err.name !== 'AbortError') setLoading(false) })
+    return () => controller.abort()
   }, [fiscalYearId])
 
   if (loading || !kpis) return <LoadingSkeleton />

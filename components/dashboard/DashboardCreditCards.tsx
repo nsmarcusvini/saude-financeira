@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { BillProjection } from '@/components/cartoes/BillProjection'
 import { formatBRL } from '@/lib/utils/currency'
+import { loanCurrentBalance } from '@/lib/calculations/loan-calculator'
 import { CreditCard, Wallet, AlertTriangle, Calendar } from 'lucide-react'
 import { MONTHS_FULL } from '@/lib/utils/dates'
 import type { CreditCardEntry, CreditCardInstallment } from '@/types/financial'
@@ -18,20 +19,33 @@ interface Loan {
   description: string
   monthly_payment: number
   remaining_installments: number
+  monthly_interest_rate: number
   type: string
 }
 
+// Usa mesma lógica do schedule.ts: respeita start_month/start_year
 function getNextMonthsBills(
   cards: CreditCardEntry[],
   installments: CreditCardInstallment[],
 ): { label: string; value: number }[] {
-  const now = new Date()
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  const refMonth = now.getMonth() + 1
+  const refYear  = now.getFullYear()
+  const refAbs   = refYear * 12 + refMonth
+
   return Array.from({ length: 3 }, (_, offset) => {
-    const d = new Date(now.getFullYear(), now.getMonth() + offset, 1)
+    const d     = new Date(refYear, now.getMonth() + offset, 1)
     const label = offset > 0
       ? `${MONTHS_FULL[d.getMonth()]} ${d.getFullYear()}`
       : MONTHS_FULL[d.getMonth()]
-    const instTotal = installments.reduce((s, i) => Number(i.installments_remaining) > offset ? s + Number(i.installment_amount) : s, 0)
+
+    const instTotal = installments.reduce((s, i) => {
+      const startAbs = Number(i.start_year) * 12 + Number(i.start_month)
+      const mAbs     = refAbs + offset
+      if (startAbs > mAbs) return s
+      return Number(i.installments_remaining) > offset ? s + Number(i.installment_amount) : s
+    }, 0)
+
     const value = offset === 0
       ? cards.reduce((s, c) => s + Number(c.current_balance), 0) + instTotal
       : instTotal
@@ -71,7 +85,8 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
   const totalMonthlyInstallments = allInstallments.reduce((s, i) => s + Number(i.installment_amount), 0)
   const totalLoanPayments = loans.reduce((s, l) => s + Number(l.monthly_payment), 0)
   const totalRemainingDebt = allInstallments.reduce((s, i) => s + Number(i.installment_amount) * Number(i.installments_remaining), 0)
-  const totalLoanDebt = loans.reduce((s, l) => s + Number(l.monthly_payment) * Number(l.remaining_installments || 0), 0)
+  // Fix #G: saldo devedor por valor presente (não "total a pagar" que inclui juros futuros)
+  const totalLoanDebt = loans.reduce((s, l) => s + loanCurrentBalance(l as never), 0)
   const commitmentPct = monthlyIncome > 0 ? (totalMonthlyInstallments + totalLoanPayments) / monthlyIncome : 0
 
   const nextMonths = useMemo(() => getNextMonthsBills(cards, allInstallments), [cards, allInstallments])
@@ -247,10 +262,11 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
           {/* Lista de empréstimos */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {loans.map((loan) => {
-              const totalLeft = Number(loan.monthly_payment) * Number(loan.remaining_installments || 0)
+              const saldoDevedor = loanCurrentBalance(loan as never)
+              const totalAPagar  = Number(loan.monthly_payment) * Number(loan.remaining_installments || 0)
               return (
                 <Card key={loan.id}>
-                  <CardContent className="pt-3 pb-3">
+                  <CardContent className="pt-3 pb-3 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-xs font-semibold truncate">{loan.description}</p>
@@ -261,9 +277,18 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
                       </p>
                     </div>
                     {loan.remaining_installments > 0 && (
-                      <p className="text-[10px] text-muted-foreground mt-1.5">
-                        {loan.remaining_installments} parcelas restantes · {formatBRL(totalLeft)} no total
-                      </p>
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border">
+                        <div>
+                          <p className="text-[9px] text-muted-foreground">Saldo devedor</p>
+                          <p className="text-xs font-semibold tabular-nums">{formatBRL(saldoDevedor)}</p>
+                          <p className="text-[9px] text-muted-foreground">para quitar hoje</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] text-muted-foreground">Total a pagar</p>
+                          <p className="text-xs tabular-nums text-muted-foreground">{formatBRL(totalAPagar)}</p>
+                          <p className="text-[9px] text-muted-foreground">{loan.remaining_installments}x restantes</p>
+                        </div>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
