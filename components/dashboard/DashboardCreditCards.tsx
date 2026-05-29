@@ -81,8 +81,16 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
+  // P2: só conta parcelas já iniciadas e com saldo restante (mesma regra do schedule.ts)
+  const _now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  const _refAbs = _now.getFullYear() * 12 + (_now.getMonth() + 1)
+
   const totalCurrentBill = cards.reduce((s, c) => s + Number(c.current_balance), 0)
-  const totalMonthlyInstallments = allInstallments.reduce((s, i) => s + Number(i.installment_amount), 0)
+  const totalMonthlyInstallments = allInstallments.reduce((s, i) => {
+    const startAbs = Number(i.start_year) * 12 + Number(i.start_month)
+    if (startAbs > _refAbs) return s // ainda não começou
+    return Number(i.installments_remaining) > 0 ? s + Number(i.installment_amount) : s
+  }, 0)
   const totalLoanPayments = loans.reduce((s, l) => s + Number(l.monthly_payment), 0)
   const totalRemainingDebt = allInstallments.reduce((s, i) => s + Number(i.installment_amount) * Number(i.installments_remaining), 0)
   // Fix #G: saldo devedor por valor presente (não "total a pagar" que inclui juros futuros)

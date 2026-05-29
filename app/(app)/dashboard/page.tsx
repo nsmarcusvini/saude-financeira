@@ -53,8 +53,11 @@ export default function DashboardPage() {
 
   if (loading || !kpis) return <LoadingSkeleton />
 
-  const avgMonthlyIncome = kpis.annualIncome / 12
-  const avgMonthlySurplus = kpis.annualSurplus / 12
+  // P1: base homogênea — divide pelos meses com renda preenchida (consistente com a API),
+  // não pelo calendário inteiro. Evita sub/superestimar com dados parciais.
+  const effectiveMonths   = Math.max(kpis.monthlyFlow.filter((r) => r.income > 0).length, 1)
+  const avgMonthlyIncome  = kpis.annualIncome  / effectiveMonths
+  const avgMonthlySurplus = kpis.annualSurplus / effectiveMonths
   const surplusStatus = kpis.savingsRateStatus
 
   return (
