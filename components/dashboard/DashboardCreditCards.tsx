@@ -60,6 +60,8 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
   const [loans, setLoans] = useState<Loan[]>([])
   const [payments, setPayments] = useState<PaymentEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedCardId, setSelectedCardId] = useState<string>('all')
+  const [selectedLoanId, setSelectedLoanId] = useState<string>('all')
 
   // Competência corrente (horário de Brasília)
   const _now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
@@ -106,12 +108,22 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
     return Number(i.installments_remaining) > 0 ? s + Number(i.installment_amount) : s
   }, 0)
   const totalLoanPayments = loans.reduce((s, l) => s + Number(l.monthly_payment), 0)
-  const totalRemainingDebt = allInstallments.reduce((s, i) => s + Number(i.installment_amount) * Number(i.installments_remaining), 0)
   // Fix #G: saldo devedor por valor presente (não "total a pagar" que inclui juros futuros)
   const totalLoanDebt = loans.reduce((s, l) => s + loanCurrentBalance(l as never), 0)
   const commitmentPct = monthlyIncome > 0 ? (totalMonthlyInstallments + totalLoanPayments) / monthlyIncome : 0
 
-  const nextMonths = useMemo(() => getNextMonthsBills(cards, allInstallments), [cards, allInstallments])
+  // Dados filtrados pelos selects de cartão e empréstimo
+  const filteredCards = selectedCardId === 'all' ? cards : cards.filter((c) => c.id === selectedCardId)
+  const filteredLoans = selectedLoanId === 'all' ? loans : loans.filter((l) => l.id === selectedLoanId)
+  const filteredInstallments = selectedCardId === 'all'
+    ? allInstallments
+    : allInstallments.filter((i) => filteredCards.some((c) => c.id === i.credit_card_id))
+
+  const nextMonths = useMemo(
+    () => getNextMonthsBills(filteredCards, filteredInstallments),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedCardId, allInstallments, cards],
+  )
 
   const hasData = cards.length > 0 || loans.length > 0
 
@@ -121,13 +133,18 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
   const commitmentColor = commitmentPct >= 0.5 ? 'text-red-600' : commitmentPct >= 0.3 ? 'text-yellow-600' : 'text-green-600'
   const commitmentBg = commitmentPct >= 0.5 ? 'bg-red-500' : commitmentPct >= 0.3 ? 'bg-yellow-500' : 'bg-green-500'
 
-  // Subtotais por categoria
-  // Dívida real = parte à-vista da fatura (não-parcelada) + todas as parcelas restantes.
-  // Subtrai as parcelas deste mês da fatura para não contá-las duas vezes
-  // (elas já estão em totalRemainingDebt).
-  const faturaAVista = Math.max(0, totalCurrentBill - totalMonthlyInstallments)
-  const cardsRealDebt = faturaAVista + totalRemainingDebt
-  const totalMonthlyCommitment = totalMonthlyInstallments + totalLoanPayments
+  // Subtotais sobre dados filtrados
+  const filteredBill = filteredCards.reduce((s, c) => s + Number(c.current_balance), 0)
+  const filteredInstTotal = filteredInstallments.reduce((s, i) => {
+    const startAbs = Number(i.start_year) * 12 + Number(i.start_month)
+    if (startAbs > _refAbs) return s
+    return Number(i.installments_remaining) > 0 ? s + Number(i.installment_amount) : s
+  }, 0)
+  const filteredLoanPayments = filteredLoans.reduce((s, l) => s + Number(l.monthly_payment), 0)
+  const faturaAVista = Math.max(0, filteredBill - filteredInstTotal)
+  const filteredRemainingDebt = filteredInstallments.reduce((s, i) => s + Number(i.installment_amount) * Number(i.installments_remaining), 0)
+  const cardsRealDebt = faturaAVista + filteredRemainingDebt
+  const totalMonthlyCommitment = filteredInstTotal + filteredLoanPayments
 
   // ── Pago vs falta este mês (vencimentos: fatura cartão + parcela empréstimo) ──
   const dueThisMonth = totalCurrentBill + totalLoanPayments
@@ -188,14 +205,23 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
       {/* ═══════════ BLOCO: CARTÕES DE CRÉDITO ═══════════ */}
       {cards.length > 0 && (
         <section className="space-y-3 rounded-xl border border-border bg-card/40 p-4">
-          {/* Cabeçalho do bloco com subtotais */}
+          {/* Cabeçalho do bloco com subtotais + filtro */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/10">
                 <CreditCard className="h-4 w-4 text-rose-600" />
               </div>
               <h3 className="text-sm font-semibold">Cartões de Crédito</h3>
-              <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{cards.length}</span>
+              {cards.length > 1 && (
+                <select
+                  value={selectedCardId}
+                  onChange={(e) => setSelectedCardId(e.target.value)}
+                  className="text-[11px] rounded border border-border bg-background px-1.5 py-0.5 text-muted-foreground focus:outline-none"
+                >
+                  <option value="all">Todos ({cards.length})</option>
+                  {cards.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              )}
             </div>
             <div className="flex gap-4 text-xs">
               <div className="text-right">
@@ -246,7 +272,7 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
 
           {/* Cartões individuais */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {cards.map((card) => {
+            {filteredCards.map((card) => {
               const cardInstalls = allInstallments.filter((i) => i.credit_card_id === card.id)
               const monthlyInst = cardInstalls.reduce((s, i) => s + Number(i.installment_amount), 0)
               const utilized = card.credit_limit > 0 ? Number(card.current_balance) / Number(card.credit_limit) : 0
@@ -319,14 +345,23 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
       {/* ═══════════ BLOCO: EMPRÉSTIMOS ═══════════ */}
       {loans.length > 0 && (
         <section className="space-y-3 rounded-xl border border-border bg-card/40 p-4">
-          {/* Cabeçalho do bloco com subtotais */}
+          {/* Cabeçalho do bloco com subtotais + filtro */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500/10">
                 <Wallet className="h-4 w-4 text-orange-600" />
               </div>
               <h3 className="text-sm font-semibold">Empréstimos</h3>
-              <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{loans.length}</span>
+              {loans.length > 1 && (
+                <select
+                  value={selectedLoanId}
+                  onChange={(e) => setSelectedLoanId(e.target.value)}
+                  className="text-[11px] rounded border border-border bg-background px-1.5 py-0.5 text-muted-foreground focus:outline-none"
+                >
+                  <option value="all">Todos ({loans.length})</option>
+                  {loans.map((l) => <option key={l.id} value={l.id}>{l.description}</option>)}
+                </select>
+              )}
             </div>
             <div className="flex gap-4 text-xs">
               <div className="text-right">
@@ -342,7 +377,7 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
 
           {/* Lista de empréstimos */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {loans.map((loan) => {
+            {filteredLoans.map((loan) => {
               const saldoDevedor = loanCurrentBalance(loan as never)
               const totalAPagar  = Number(loan.monthly_payment) * Number(loan.remaining_installments || 0)
               return (

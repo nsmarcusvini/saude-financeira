@@ -8,16 +8,18 @@ import type { MonthlyFlowRow } from '@/types/financial'
 
 interface CurrentMonthSummaryProps {
   rows: MonthlyFlowRow[]
+  selectedMonth?: number | null
 }
 
-export function CurrentMonthSummary({ rows }: CurrentMonthSummaryProps) {
+export function CurrentMonthSummary({ rows, selectedMonth }: CurrentMonthSummaryProps) {
   const now = new Date()
   const currentMonth = now.getMonth() + 1
   const currentYear = now.getFullYear()
 
-  // Pega o mês atual; se não tiver dados, pega o último com dados
+  const targetMonth = selectedMonth ?? currentMonth
+  // Pega o mês selecionado; se não tiver dados, pega o último com dados
   const row =
-    rows.find((r) => r.month === currentMonth) ??
+    rows.find((r) => r.month === targetMonth) ??
     [...rows].reverse().find((r) => r.income > 0 || r.fixed + r.variable > 0)
 
   if (!row) return null
@@ -35,6 +37,8 @@ export function CurrentMonthSummary({ rows }: CurrentMonthSummaryProps) {
   const surplusColor = isDeficit ? 'text-red-600' : 'text-green-600'
 
   const monthLabel = `${MONTHS_FULL[row.month - 1]} ${currentYear}`
+  const isPast = row.month < currentMonth
+  const isFuture = row.month > currentMonth
 
   return (
     <Card className="overflow-hidden border-0 shadow-sm bg-gradient-to-br from-background to-muted/30">
@@ -42,7 +46,9 @@ export function CurrentMonthSummary({ rows }: CurrentMonthSummaryProps) {
         <div className="flex items-center gap-2 mb-5">
           <Wallet className="h-4 w-4 text-muted-foreground" />
           <p className="text-sm font-medium text-muted-foreground">
-            Resumo de {row.month === currentMonth ? monthLabel : `${MONTHS_FULL[row.month - 1]} (último com dados)`}
+            Resumo de {monthLabel}
+            {isPast && <span className="ml-1.5 text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">realizado</span>}
+            {isFuture && <span className="ml-1.5 text-[10px] bg-primary/10 px-1.5 py-0.5 rounded text-primary">projeção</span>}
           </p>
         </div>
 

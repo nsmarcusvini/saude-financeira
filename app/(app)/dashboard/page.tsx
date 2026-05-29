@@ -14,7 +14,8 @@ import { DashboardCreditCards } from '@/components/dashboard/DashboardCreditCard
 import { CurrentMonthSummary } from '@/components/dashboard/CurrentMonthSummary'
 import { MonthlyForecast } from '@/components/dashboard/MonthlyForecast'
 import { formatBRL, formatPct } from '@/lib/utils/currency'
-import { TrendingUp, TrendingDown, PiggyBank, LineChart, Shield } from 'lucide-react'
+import { MONTHS } from '@/lib/utils/dates'
+import { TrendingUp, TrendingDown, PiggyBank, LineChart, Shield, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { DashboardKpis, HealthStatus } from '@/types/financial'
 
 function reserveStatus(months: number): HealthStatus {
@@ -46,6 +47,8 @@ export default function DashboardPage() {
   const fiscalYearId = useFiscalYear()
   const [kpis, setKpis] = useState<DashboardKpis | null>(null)
   const [loading, setLoading] = useState(false)
+  const _now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  const [selectedMonth, setSelectedMonth] = useState<number>(_now.getMonth() + 1)
 
   useEffect(() => {
     if (!fiscalYearId) return
@@ -67,15 +70,53 @@ export default function DashboardPage() {
   const avgMonthlySurplus = kpis.annualSurplus / effectiveMonths
   const surplusStatus = kpis.savingsRateStatus
 
+  const monthsWithData = kpis.monthlyFlow
+    .filter((r) => r.income > 0 || r.fixed + r.variable > 0 || r.loanPayments > 0)
+    .map((r) => r.month)
+
   return (
     <div className="space-y-8 max-w-7xl">
-      <div>
-        <h1 className="text-xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Visão geral da saúde financeira</p>
+      {/* ── CABEÇALHO + FILTRO DE MÊS ── */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-xl font-semibold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Visão geral da saúde financeira</p>
+        </div>
+
+        {/* Seletor de mês com navegação por setas */}
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-card px-1 py-1">
+          <button
+            onClick={() => setSelectedMonth((m) => Math.max(1, m - 1))}
+            disabled={selectedMonth <= 1}
+            className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-muted transition-colors disabled:opacity-30"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(Number(e.target.value))}
+            className="h-7 rounded bg-transparent px-2 text-sm font-medium focus:outline-none cursor-pointer"
+          >
+            {MONTHS.map((label, i) => (
+              <option key={i} value={i + 1}>
+                {label} {monthsWithData.includes(i + 1) ? '' : '·'}
+              </option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => setSelectedMonth((m) => Math.min(12, m + 1))}
+            disabled={selectedMonth >= 12}
+            className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-muted transition-colors disabled:opacity-30"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* ── 1. RESUMO DO MÊS: entradas vs saídas totais ── */}
-      <CurrentMonthSummary rows={kpis.monthlyFlow} />
+      <CurrentMonthSummary rows={kpis.monthlyFlow} selectedMonth={selectedMonth} />
 
       {/* ── 1b. PREVISÃO DE DESEMBOLSO: este mês + próximos ── */}
       <MonthlyForecast forecast={kpis.forecast} />
