@@ -108,7 +108,11 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
   const commitmentBg = commitmentPct >= 0.5 ? 'bg-red-500' : commitmentPct >= 0.3 ? 'bg-yellow-500' : 'bg-green-500'
 
   // Subtotais por categoria
-  const cardsRealDebt = totalCurrentBill + totalRemainingDebt
+  // Dívida real = parte à-vista da fatura (não-parcelada) + todas as parcelas restantes.
+  // Subtrai as parcelas deste mês da fatura para não contá-las duas vezes
+  // (elas já estão em totalRemainingDebt).
+  const faturaAVista = Math.max(0, totalCurrentBill - totalMonthlyInstallments)
+  const cardsRealDebt = faturaAVista + totalRemainingDebt
   const totalMonthlyCommitment = totalMonthlyInstallments + totalLoanPayments
 
   return (
@@ -150,8 +154,9 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
                 <p className="font-bold tabular-nums text-orange-600">{formatBRL(totalMonthlyInstallments)}</p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-muted-foreground">Dívida cartões</p>
+                <p className="text-[10px] text-muted-foreground">Total que você deve</p>
                 <p className="font-bold tabular-nums text-rose-700">{formatBRL(cardsRealDebt)}</p>
+                <p className="text-[9px] text-muted-foreground">fatura + parcelas restantes</p>
               </div>
             </div>
           </div>
