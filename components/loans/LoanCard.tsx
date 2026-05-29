@@ -10,9 +10,10 @@ import type { Loan } from '@/types/financial'
 interface LoanCardProps {
   loan: Loan
   onDelete: (id: string) => void
+  paymentSlot?: React.ReactNode
 }
 
-export function LoanCard({ loan, onDelete }: LoanCardProps) {
+export function LoanCard({ loan, onDelete, paymentSlot }: LoanCardProps) {
   const totalCost = totalLoanCost(loan)
   const interest = totalLoanInterest(loan)
   const currentBalance = loanCurrentBalance(loan)
@@ -57,6 +58,12 @@ export function LoanCard({ loan, onDelete }: LoanCardProps) {
             <p className="font-semibold tabular-nums text-red-600">{formatBRL(interest)}</p>
           </div>
         </div>
+        {paymentSlot && (
+          <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Pagamento do mês</span>
+            {paymentSlot}
+          </div>
+        )}
       </CardContent>
     </Card>
   )

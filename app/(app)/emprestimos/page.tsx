@@ -5,28 +5,39 @@ import { useFiscalYear } from '@/lib/hooks/useFiscalYear'
 import { LoanCard } from '@/components/loans/LoanCard'
 import { LoanForm } from '@/components/loans/LoanForm'
 import { DebtHealthBar } from '@/components/loans/DebtHealthBar'
+import { PaymentFlow } from '@/components/payments/PaymentFlow'
 import { Card, CardContent } from '@/components/ui/card'
 import { totalMonthlyPayments } from '@/lib/calculations/loan-calculator'
 import { formatBRL } from '@/lib/utils/currency'
-import type { Loan } from '@/types/financial'
+import type { Loan, PaymentEvent, PaymentStatus } from '@/types/financial'
 
 export default function EmprestimosPage() {
   const fiscalYearId = useFiscalYear()
   const [loans, setLoans] = useState<Loan[]>([])
+  const [payments, setPayments] = useState<PaymentEvent[]>([])
   const [monthlyIncome, setMonthlyIncome] = useState(0)
   const [loading, setLoading] = useState(true)
 
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  const compMonth = now.getMonth() + 1
+  const compYear = now.getFullYear()
+
   const fetchLoans = useCallback(async () => {
     if (!fiscalYearId) return
-    const [loansRes, incomeRes] = await Promise.all([
+    const [loansRes, incomeRes, payRes] = await Promise.all([
       fetch(`/api/loans?fiscal_year_id=${fiscalYearId}`).then((r) => r.json()),
       fetch(`/api/entries?fiscal_year_id=${fiscalYearId}`).then((r) => r.json()),
+      fetch(`/api/pagamentos?fiscal_year_id=${fiscalYearId}&month=${compMonth}&year=${compYear}`).then((r) => r.json()),
     ])
-    setLoans(loansRes)
-    const totalIncome = (incomeRes as { amount: number }[]).reduce((s, e) => s + Number(e.amount), 0)
+    setLoans(Array.isArray(loansRes) ? loansRes : [])
+    setPayments(Array.isArray(payRes) ? payRes : [])
+    const totalIncome = (Array.isArray(incomeRes) ? incomeRes as { amount: number }[] : []).reduce((s, e) => s + Number(e.amount), 0)
     setMonthlyIncome(totalIncome / 12)
     setLoading(false)
-  }, [fiscalYearId])
+  }, [fiscalYearId, compMonth, compYear])
+
+  const statusOf = (id: string): PaymentStatus | null =>
+    payments.find((p) => p.ref_id === id)?.status ?? null
 
   useEffect(() => { fetchLoans() }, [fetchLoans])
 
@@ -69,7 +80,25 @@ export default function EmprestimosPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {loans.map((loan) => (
-            <LoanCard key={loan.id} loan={loan} onDelete={handleDelete} />
+            <LoanCard
+              key={loan.id}
+              loan={loan}
+              onDelete={handleDelete}
+              paymentSlot={fiscalYearId ? (
+                <PaymentFlow
+                  fiscalYearId={fiscalYearId}
+                  refType="loan"
+                  refId={loan.id}
+                  label={loan.description}
+                  amountDue={Number(loan.monthly_payment)}
+                  competenceMonth={compMonth}
+                  competenceYear={compYear}
+                  currentStatus={statusOf(loan.id)}
+                  variant={statusOf(loan.id) ? 'badge' : 'button'}
+                  onDone={fetchLoans}
+                />
+              ) : null}
+            />
           ))}
         </div>
       )}

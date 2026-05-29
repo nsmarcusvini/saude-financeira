@@ -3,11 +3,12 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { BillProjection } from '@/components/cartoes/BillProjection'
+import { PaymentFlow } from '@/components/payments/PaymentFlow'
 import { formatBRL } from '@/lib/utils/currency'
 import { loanCurrentBalance } from '@/lib/calculations/loan-calculator'
-import { CreditCard, Wallet, AlertTriangle, Calendar } from 'lucide-react'
+import { CreditCard, Wallet, AlertTriangle, Calendar, CheckCircle2 } from 'lucide-react'
 import { MONTHS_FULL } from '@/lib/utils/dates'
-import type { CreditCardEntry, CreditCardInstallment } from '@/types/financial'
+import type { CreditCardEntry, CreditCardInstallment, PaymentEvent, PaymentStatus } from '@/types/financial'
 
 interface DashboardCreditCardsProps {
   fiscalYearId: string
@@ -57,18 +58,30 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
   const [cards, setCards] = useState<CreditCardEntry[]>([])
   const [allInstallments, setAllInstallments] = useState<CreditCardInstallment[]>([])
   const [loans, setLoans] = useState<Loan[]>([])
+  const [payments, setPayments] = useState<PaymentEvent[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Competência corrente (horário de Brasília)
+  const _now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  const compMonth = _now.getMonth() + 1
+  const compYear = _now.getFullYear()
+  const _refAbs = compYear * 12 + compMonth
 
   const fetchAll = useCallback(async () => {
     if (!fiscalYearId) return
     try {
-      const [cardsRes, loansRes] = await Promise.all([
+      const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+      const m = now.getMonth() + 1
+      const y = now.getFullYear()
+      const [cardsRes, loansRes, payRes] = await Promise.all([
         fetch(`/api/cartoes?fiscal_year_id=${fiscalYearId}`).then((r) => r.json()),
         fetch(`/api/loans?fiscal_year_id=${fiscalYearId}`).then((r) => r.json()),
+        fetch(`/api/pagamentos?fiscal_year_id=${fiscalYearId}&month=${m}&year=${y}`).then((r) => r.json()),
       ])
       const cardList: CreditCardEntry[] = Array.isArray(cardsRes) ? cardsRes : []
       setCards(cardList)
       setLoans(Array.isArray(loansRes) ? loansRes : [])
+      setPayments(Array.isArray(payRes) ? payRes : [])
 
       const installsArrays = await Promise.all(
         cardList.map((c) => fetch(`/api/parcelas?credit_card_id=${c.id}`).then((r) => r.json()))
@@ -81,9 +94,9 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  // P2: só conta parcelas já iniciadas e com saldo restante (mesma regra do schedule.ts)
-  const _now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
-  const _refAbs = _now.getFullYear() * 12 + (_now.getMonth() + 1)
+  // Status de pagamento por referência (cartão/empréstimo) na competência atual
+  const statusOf = (refId: string): PaymentStatus | null =>
+    payments.find((p) => p.ref_id === refId)?.status ?? null
 
   const totalCurrentBill = cards.reduce((s, c) => s + Number(c.current_balance), 0)
   const totalMonthlyInstallments = allInstallments.reduce((s, i) => {
@@ -115,6 +128,21 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
   const cardsRealDebt = faturaAVista + totalRemainingDebt
   const totalMonthlyCommitment = totalMonthlyInstallments + totalLoanPayments
 
+  // ── Pago vs falta este mês (vencimentos: fatura cartão + parcela empréstimo) ──
+  const dueThisMonth = totalCurrentBill + totalLoanPayments
+  const resolvedThisMonth =
+    cards.reduce((s, c) => {
+      const st = statusOf(c.id)
+      return st === 'paid' || st === 'installment' ? s + Number(c.current_balance) : s
+    }, 0) +
+    loans.reduce((s, l) => {
+      const st = statusOf(l.id)
+      return st === 'paid' || st === 'installment' ? s + Number(l.monthly_payment) : s
+    }, 0)
+  const pendingThisMonth = Math.max(0, dueThisMonth - resolvedThisMonth)
+  const allResolved = dueThisMonth > 0 && pendingThisMonth === 0
+  const compLabel = `${MONTHS_FULL[compMonth - 1]}/${compYear}`
+
   return (
     <div className="space-y-6">
       {/* Header geral + comprometimento */}
@@ -131,6 +159,30 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
           </div>
         </div>
       </div>
+
+      {/* Status de pagamentos do mês */}
+      {dueThisMonth > 0 && (
+        <div className={`rounded-xl border p-4 ${allResolved ? 'border-green-500/30 bg-green-500/5' : 'border-border bg-card/40'}`}>
+          <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+            <div className="flex items-center gap-2">
+              {allResolved
+                ? <CheckCircle2 className="h-4 w-4 text-green-600" />
+                : <AlertTriangle className="h-4 w-4 text-orange-500" />}
+              <p className="text-sm font-semibold">
+                {allResolved ? `Tudo registrado em ${compLabel}` : `Pagamentos de ${compLabel}`}
+              </p>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Registrado <span className="font-bold text-green-600 tabular-nums">{formatBRL(resolvedThisMonth)}</span>
+              {' '}de <span className="font-bold tabular-nums">{formatBRL(dueThisMonth)}</span>
+              {pendingThisMonth > 0 && <> · falta <span className="font-bold text-red-600 tabular-nums">{formatBRL(pendingThisMonth)}</span></>}
+            </div>
+          </div>
+          <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+            <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${dueThisMonth > 0 ? Math.min((resolvedThisMonth / dueThisMonth) * 100, 100) : 0}%` }} />
+          </div>
+        </div>
+      )}
 
       {/* ═══════════ BLOCO: CARTÕES DE CRÉDITO ═══════════ */}
       {cards.length > 0 && (
@@ -231,6 +283,20 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
                         <p className={`text-xs font-bold tabular-nums ${utilizColor}`}>{(utilized * 100).toFixed(0)}%</p>
                       </div>
                     </div>
+                    <div className="flex justify-end pt-1 border-t border-border">
+                      <PaymentFlow
+                        fiscalYearId={fiscalYearId}
+                        refType="card"
+                        refId={card.id}
+                        label={card.name}
+                        amountDue={Number(card.current_balance)}
+                        competenceMonth={compMonth}
+                        competenceYear={compYear}
+                        currentStatus={statusOf(card.id)}
+                        variant={statusOf(card.id) ? 'badge' : 'button'}
+                        onDone={fetchAll}
+                      />
+                    </div>
                   </CardContent>
                 </Card>
               )
@@ -303,6 +369,20 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
                         </div>
                       </div>
                     )}
+                    <div className="flex justify-end pt-1 border-t border-border">
+                      <PaymentFlow
+                        fiscalYearId={fiscalYearId}
+                        refType="loan"
+                        refId={loan.id}
+                        label={loan.description}
+                        amountDue={Number(loan.monthly_payment)}
+                        competenceMonth={compMonth}
+                        competenceYear={compYear}
+                        currentStatus={statusOf(loan.id)}
+                        variant={statusOf(loan.id) ? 'badge' : 'button'}
+                        onDone={fetchAll}
+                      />
+                    </div>
                   </CardContent>
                 </Card>
               )

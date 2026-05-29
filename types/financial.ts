@@ -112,6 +112,22 @@ export interface DashboardKpis {
   creditCardMonthlyTotal: number
 }
 
+export type PaymentRefType = 'card' | 'loan'
+export type PaymentStatus = 'paid' | 'installment' | 'unpaid'
+
+export interface PaymentEvent {
+  id: string
+  fiscal_year_id: string
+  ref_type: PaymentRefType
+  ref_id: string
+  competence_month: number
+  competence_year: number
+  status: PaymentStatus
+  amount: number
+  note: string | null
+  created_at: string
+}
+
 export interface CreditCardInstallment {
   id: string
   credit_card_id: string

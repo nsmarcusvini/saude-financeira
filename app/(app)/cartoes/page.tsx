@@ -7,9 +7,10 @@ import { CreditCardCard } from '@/components/cartoes/CreditCardCard'
 import { InstallmentForm } from '@/components/cartoes/InstallmentForm'
 import { InstallmentList } from '@/components/cartoes/InstallmentList'
 import { BillProjection } from '@/components/cartoes/BillProjection'
+import { PaymentFlow } from '@/components/payments/PaymentFlow'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatBRL } from '@/lib/utils/currency'
-import type { CreditCardEntry, CreditCardInstallment } from '@/types/financial'
+import type { CreditCardEntry, CreditCardInstallment, PaymentEvent, PaymentStatus } from '@/types/financial'
 
 type InstallmentsMap = Record<string, CreditCardInstallment[]>
 
@@ -31,13 +32,22 @@ export default function CartoesPage() {
   const fiscalYearId = useFiscalYear()
   const [cards, setCards] = useState<CreditCardEntry[]>([])
   const [installmentsMap, setInstallmentsMap] = useState<InstallmentsMap>({})
+  const [payments, setPayments] = useState<PaymentEvent[]>([])
   const [loading, setLoading] = useState(true)
+
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  const compMonth = now.getMonth() + 1
+  const compYear = now.getFullYear()
 
   const fetchAll = useCallback(async () => {
     if (!fiscalYearId) return
-    const cardsRes = await fetch(`/api/cartoes?fiscal_year_id=${fiscalYearId}`).then((r) => r.json())
+    const [cardsRes, payRes] = await Promise.all([
+      fetch(`/api/cartoes?fiscal_year_id=${fiscalYearId}`).then((r) => r.json()),
+      fetch(`/api/pagamentos?fiscal_year_id=${fiscalYearId}&month=${compMonth}&year=${compYear}`).then((r) => r.json()),
+    ])
     const cardList: CreditCardEntry[] = Array.isArray(cardsRes) ? cardsRes : []
     setCards(cardList)
+    setPayments(Array.isArray(payRes) ? payRes : [])
 
     const installsEntries = await Promise.all(
       cardList.map(async (c) => {
@@ -47,7 +57,10 @@ export default function CartoesPage() {
     )
     setInstallmentsMap(Object.fromEntries(installsEntries))
     setLoading(false)
-  }, [fiscalYearId])
+  }, [fiscalYearId, compMonth, compYear])
+
+  const statusOf = (id: string): PaymentStatus | null =>
+    payments.find((p) => p.ref_id === id)?.status ?? null
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
@@ -153,7 +166,24 @@ export default function CartoesPage() {
                 <div className="grid md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-border">
                   {/* Lado esquerdo: card + métricas */}
                   <div className="p-4 space-y-3">
-                    <CreditCardCard card={card} onDelete={handleDeleteCard} />
+                    <CreditCardCard
+                      card={card}
+                      onDelete={handleDeleteCard}
+                      paymentSlot={fiscalYearId ? (
+                        <PaymentFlow
+                          fiscalYearId={fiscalYearId}
+                          refType="card"
+                          refId={card.id}
+                          label={card.name}
+                          amountDue={Number(card.current_balance)}
+                          competenceMonth={compMonth}
+                          competenceYear={compYear}
+                          currentStatus={statusOf(card.id)}
+                          variant={statusOf(card.id) ? 'badge' : 'button'}
+                          onDone={fetchAll}
+                        />
+                      ) : null}
+                    />
 
                     <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border">
                       <div>

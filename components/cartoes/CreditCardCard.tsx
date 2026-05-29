@@ -9,9 +9,10 @@ import type { CreditCardEntry } from '@/types/financial'
 interface CreditCardCardProps {
   card: CreditCardEntry
   onDelete: (id: string) => void
+  paymentSlot?: React.ReactNode
 }
 
-export function CreditCardCard({ card, onDelete }: CreditCardCardProps) {
+export function CreditCardCard({ card, onDelete, paymentSlot }: CreditCardCardProps) {
   const utilized = card.credit_limit > 0 ? card.current_balance / card.credit_limit : 0
   const available = card.credit_limit - card.current_balance
 
@@ -84,6 +85,13 @@ export function CreditCardCard({ card, onDelete }: CreditCardCardProps) {
             <span>{(card.monthly_interest_rate * 100).toFixed(2)}% a.m.</span>
           )}
         </div>
+
+        {paymentSlot && (
+          <div className="flex items-center justify-between pt-2 border-t border-border">
+            <span className="text-xs text-muted-foreground">Pagamento do mês</span>
+            {paymentSlot}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
