@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { effectiveLoanRemaining } from '@/lib/calculations/schedule'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -14,7 +15,20 @@ export async function GET(request: Request) {
     .order('created_at')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+
+  // Auto-decremento: parcelas restantes derivadas da data de início
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  const refMonth = now.getMonth() + 1
+  const refYear = now.getFullYear()
+
+  const adjusted = (data ?? []).map((l) => ({
+    ...l,
+    remaining_installments: effectiveLoanRemaining(
+      l.start_month, l.start_year, Number(l.remaining_installments), refMonth, refYear,
+    ),
+  }))
+
+  return NextResponse.json(adjusted)
 }
 
 export async function POST(request: Request) {

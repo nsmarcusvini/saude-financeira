@@ -15,6 +15,7 @@ interface LoanFormProps {
   onAdded: () => void
 }
 
+const _now = new Date()
 const empty = {
   description: '',
   type: '',
@@ -22,7 +23,11 @@ const empty = {
   monthly_interest_rate: '0',
   monthly_payment: '',
   remaining_installments: '',
+  start_month: String(_now.getMonth() + 1),
+  start_year: String(_now.getFullYear()),
 }
+
+const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
 export function LoanForm({ fiscalYearId, onAdded }: LoanFormProps) {
   const [open, setOpen] = useState(false)
@@ -62,6 +67,8 @@ export function LoanForm({ fiscalYearId, onAdded }: LoanFormProps) {
         monthly_interest_rate: rate,
         monthly_payment: payment,
         remaining_installments: installments,
+        start_month: Number(form.start_month),
+        start_year: Number(form.start_year),
       }),
     })
     setForm(empty)
@@ -128,6 +135,22 @@ export function LoanForm({ fiscalYearId, onAdded }: LoanFormProps) {
             <Label>Parcelas Restantes *</Label>
             <Input type="number" placeholder="36" value={form.remaining_installments} onChange={(e) => set('remaining_installments', e.target.value)} />
           </div>
+          <div className="space-y-1.5">
+            <Label>Mês de Referência</Label>
+            <Select value={form.start_month} onValueChange={(v) => set('start_month', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {MONTHS.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Ano de Referência</Label>
+            <Input type="number" min={2020} max={2099} value={form.start_year} onChange={(e) => set('start_year', e.target.value)} />
+          </div>
+          <p className="col-span-2 text-[11px] text-muted-foreground -mt-1">
+            As "parcelas restantes" valem para o mês/ano de referência. A partir daí, o sistema decrementa automaticamente a cada mês.
+          </p>
 
           {preview && (
             <div className="col-span-2 grid grid-cols-3 gap-3 rounded-lg border border-border bg-muted/30 p-3">

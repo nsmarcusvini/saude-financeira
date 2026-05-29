@@ -5,7 +5,7 @@ import {
   generateInsights, generateStructuredInsights, buildMonthlyFlow,
 } from '@/lib/calculations/health-indicators'
 import { calculateProjection } from '@/lib/calculations/projection'
-import { buildDebtSchedule, annualDebtForFutureYear, debtForFiscalMonth, effectiveRemaining } from '@/lib/calculations/schedule'
+import { buildDebtSchedule, annualDebtForFutureYear, debtForFiscalMonth, effectiveRemaining, effectiveLoanRemaining } from '@/lib/calculations/schedule'
 import type { DashboardKpis, Loan, ForecastMonth } from '@/types/financial'
 
 export async function GET(request: Request) {
@@ -25,13 +25,6 @@ export async function GET(request: Request) {
 
   const incomeEntries = incomeRes.data ?? []
   const expenseEntries = expenseRes.data ?? []
-  const loans: Loan[] = (loansRes.data ?? []).map((l) => ({
-    ...l,
-    original_value: Number(l.original_value),
-    current_balance: Number(l.current_balance),
-    monthly_interest_rate: Number(l.monthly_interest_rate),
-    monthly_payment: Number(l.monthly_payment),
-  }))
 
   // Parcelamentos com datas para o schedule unificado
   const cardIds = (cardsRes.data ?? []).map((c) => c.id)
@@ -49,6 +42,18 @@ export async function GET(request: Request) {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
   const referenceMonth = now.getMonth() + 1
   const referenceYear  = now.getFullYear()
+
+  // Empréstimos com auto-decremento das parcelas restantes (a partir do start)
+  const loans: Loan[] = (loansRes.data ?? []).map((l) => ({
+    ...l,
+    original_value: Number(l.original_value),
+    current_balance: Number(l.current_balance),
+    monthly_interest_rate: Number(l.monthly_interest_rate),
+    monthly_payment: Number(l.monthly_payment),
+    remaining_installments: effectiveLoanRemaining(
+      l.start_month, l.start_year, Number(l.remaining_installments), referenceMonth, referenceYear,
+    ),
+  }))
 
   // Auto-decremento: parcelas restantes derivadas da data de início + total
   const installments = (installmentsRes.data ?? []).map((i) => ({

@@ -9,6 +9,27 @@ export interface LoanScheduleItem {
   remaining_installments: number
 }
 
+/**
+ * Parcelas restantes de empréstimo hoje.
+ * Diferente do cartão (que tem total fixo), o empréstimo guarda apenas
+ * "parcelas restantes" — tratado como válido na data de início (start).
+ * Cada mês decorrido desde o start reduz uma parcela.
+ *
+ * Sem start_month/start_year (dados antigos), retorna o valor estático.
+ */
+export function effectiveLoanRemaining(
+  startMonth: number | null | undefined,
+  startYear: number | null | undefined,
+  storedRemaining: number,
+  refMonth: number,
+  refYear: number,
+): number {
+  const stored = Math.max(0, Number(storedRemaining) || 0)
+  if (!startMonth || !startYear) return stored
+  const elapsed = (refYear * 12 + refMonth) - (Number(startYear) * 12 + Number(startMonth))
+  return Math.max(0, stored - Math.max(0, elapsed))
+}
+
 export interface InstallmentScheduleItem {
   installment_amount: number
   installments_remaining: number

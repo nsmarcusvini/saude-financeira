@@ -34,6 +34,8 @@ export interface Loan {
   monthly_interest_rate: number
   monthly_payment: number
   remaining_installments: number
+  start_month: number | null
+  start_year: number | null
   created_at: string
 }
 

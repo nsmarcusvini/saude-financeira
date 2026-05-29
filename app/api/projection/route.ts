@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { calculateProjection } from '@/lib/calculations/projection'
-import { annualDebtForFutureYear, effectiveRemaining } from '@/lib/calculations/schedule'
+import { annualDebtForFutureYear, effectiveRemaining, effectiveLoanRemaining } from '@/lib/calculations/schedule'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const [incomeRes, expenseRes, loansRes, assumptionsRes, cardsRes] = await Promise.all([
     supabase.from('income_entries').select('amount').eq('fiscal_year_id', fiscalYearId),
     supabase.from('expense_entries').select('amount').eq('fiscal_year_id', fiscalYearId),
-    supabase.from('loans').select('monthly_payment, remaining_installments').eq('fiscal_year_id', fiscalYearId),
+    supabase.from('loans').select('monthly_payment, remaining_installments, start_month, start_year').eq('fiscal_year_id', fiscalYearId),
     supabase.from('projection_assumptions').select('*').eq('fiscal_year_id', fiscalYearId).single(),
     supabase.from('credit_cards').select('id').eq('fiscal_year_id', fiscalYearId),
   ])
@@ -33,7 +33,9 @@ export async function GET(request: Request) {
 
   const loans = (loansRes.data ?? []).map((l) => ({
     monthly_payment: Number(l.monthly_payment),
-    remaining_installments: Number(l.remaining_installments),
+    remaining_installments: effectiveLoanRemaining(
+      l.start_month, l.start_year, Number(l.remaining_installments), referenceMonth, referenceYear,
+    ),
   }))
 
   // Auto-decremento: parcelas restantes derivadas da data de início + total
