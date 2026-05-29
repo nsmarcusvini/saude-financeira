@@ -19,12 +19,12 @@ export async function GET(request: Request) {
   ])
 
   const cardIds = (cardsRes.data ?? []).map((c: { id: string }) => c.id)
+  // N2: sem filtro remaining>0 — consistente com dashboard/route.ts
   const installmentsRes = cardIds.length > 0
     ? await supabase
         .from('credit_card_installments')
         .select('installment_amount, installments_remaining, start_month, start_year')
         .in('credit_card_id', cardIds)
-        .gt('installments_remaining', 0)
     : { data: [] }
 
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))

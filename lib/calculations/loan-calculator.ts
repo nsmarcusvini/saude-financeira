@@ -26,7 +26,3 @@ export function totalMonthlyPayments(loans: Loan[]): number {
   return loans.reduce((sum, l) => sum + l.monthly_payment, 0)
 }
 
-export function debtCommitmentPct(loans: Loan[], monthlyIncome: number): number {
-  if (monthlyIncome === 0) return 0
-  return totalMonthlyPayments(loans) / monthlyIncome
-}

@@ -5,7 +5,6 @@ import {
   generateInsights, generateStructuredInsights, buildMonthlyFlow,
 } from '@/lib/calculations/health-indicators'
 import { calculateProjection } from '@/lib/calculations/projection'
-import { totalMonthlyPayments } from '@/lib/calculations/loan-calculator'
 import { buildDebtSchedule, annualDebtForFutureYear } from '@/lib/calculations/schedule'
 import type { DashboardKpis, Loan } from '@/types/financial'
 

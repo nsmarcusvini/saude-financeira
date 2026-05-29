@@ -26,10 +26,12 @@ export function generateStructuredInsights(kpis: Omit<DashboardKpis, 'insights' 
   const nextSteps: Insight[] = []
   const savingsTips: Insight[] = []
 
-  const avgMonthlyIncome = kpis.annualIncome / 12
-  const avgMonthlyExpenses = kpis.annualExpenses / 12
-  const avgMonthlySurplus = kpis.annualSurplus / 12
-  const missingToTarget = avgMonthlyIncome * 0.20 - avgMonthlySurplus
+  // N1: usa effectiveMonths derivado do fluxo real (consistente com a API)
+  // N7: avgMonthlyExpenses removido — não era utilizado
+  const effectiveMonths   = Math.max(kpis.monthlyFlow.filter((r) => r.income > 0).length, 1)
+  const avgMonthlyIncome  = kpis.annualIncome  / effectiveMonths
+  const avgMonthlySurplus = kpis.annualSurplus / effectiveMonths
+  const missingToTarget   = avgMonthlyIncome * 0.20 - avgMonthlySurplus
 
   if (kpis.annualIncome === 0) {
     diagnosis.push({ text: 'Preencha a aba Entradas para começar a ver seus indicadores.', type: 'warning' })
