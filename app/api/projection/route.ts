@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { calculateProjection } from '@/lib/calculations/projection'
-import { annualDebtForFutureYear } from '@/lib/calculations/schedule'
+import { annualDebtForFutureYear, effectiveRemaining } from '@/lib/calculations/schedule'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   const installmentsRes = cardIds.length > 0
     ? await supabase
         .from('credit_card_installments')
-        .select('installment_amount, installments_remaining, start_month, start_year')
+        .select('installment_amount, installments_remaining, installments_total, start_month, start_year')
         .in('credit_card_id', cardIds)
     : { data: [] }
 
@@ -36,9 +36,14 @@ export async function GET(request: Request) {
     remaining_installments: Number(l.remaining_installments),
   }))
 
+  // Auto-decremento: parcelas restantes derivadas da data de início + total
   const installments = (installmentsRes.data ?? []).map((i) => ({
     installment_amount: Number(i.installment_amount),
-    installments_remaining: Number(i.installments_remaining),
+    installments_remaining: effectiveRemaining(
+      Number(i.start_month), Number(i.start_year),
+      Number(i.installments_total), Number(i.installments_remaining),
+      referenceMonth, referenceYear,
+    ),
     start_month: Number(i.start_month),
     start_year: Number(i.start_year),
   }))

@@ -17,6 +17,31 @@ export interface InstallmentScheduleItem {
 }
 
 /**
+ * Calcula quantas parcelas REALMENTE restam hoje, a partir da data de início
+ * e do total de parcelas — sem depender do número estático cadastrado.
+ *
+ * Convenção: no mês de início (elapsed=0) ainda faltam TODAS as parcelas
+ * (a 1ª é cobrada neste ciclo). Cada mês decorrido reduz uma parcela.
+ *
+ * Se installments_total não estiver disponível, cai no valor estático (fallback).
+ */
+export function effectiveRemaining(
+  startMonth: number,
+  startYear: number,
+  installmentsTotal: number,
+  storedRemaining: number,
+  refMonth: number,
+  refYear: number,
+): number {
+  if (!installmentsTotal || installmentsTotal <= 0) {
+    return Math.max(0, Number(storedRemaining) || 0)
+  }
+  const elapsed = (refYear * 12 + refMonth) - (startYear * 12 + startMonth)
+  const remaining = installmentsTotal - Math.max(0, elapsed)
+  return Math.max(0, Math.min(installmentsTotal, remaining))
+}
+
+/**
  * Total de dívida (empréstimos + parcelas de cartão) para um dado mês do ano fiscal (1-12).
  *
  * offset = fiscalMonth - referenceMonth

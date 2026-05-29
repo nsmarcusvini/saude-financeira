@@ -5,7 +5,7 @@ import {
   generateInsights, generateStructuredInsights, buildMonthlyFlow,
 } from '@/lib/calculations/health-indicators'
 import { calculateProjection } from '@/lib/calculations/projection'
-import { buildDebtSchedule, annualDebtForFutureYear, debtForFiscalMonth } from '@/lib/calculations/schedule'
+import { buildDebtSchedule, annualDebtForFutureYear, debtForFiscalMonth, effectiveRemaining } from '@/lib/calculations/schedule'
 import type { DashboardKpis, Loan, ForecastMonth } from '@/types/financial'
 
 export async function GET(request: Request) {
@@ -41,21 +41,26 @@ export async function GET(request: Request) {
   const installmentsRes = cardIds.length > 0
     ? await supabase
         .from('credit_card_installments')
-        .select('installment_amount, installments_remaining, start_month, start_year')
+        .select('installment_amount, installments_remaining, installments_total, start_month, start_year')
         .in('credit_card_id', cardIds)
     : { data: [] }
-
-  const installments = (installmentsRes.data ?? []).map((i) => ({
-    installment_amount: Number(i.installment_amount),
-    installments_remaining: Number(i.installments_remaining),
-    start_month: Number(i.start_month),
-    start_year: Number(i.start_year),
-  }))
 
   // UTC-3 (horário de Brasília) para evitar divergência de fuso na virada de mês
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
   const referenceMonth = now.getMonth() + 1
   const referenceYear  = now.getFullYear()
+
+  // Auto-decremento: parcelas restantes derivadas da data de início + total
+  const installments = (installmentsRes.data ?? []).map((i) => ({
+    installment_amount: Number(i.installment_amount),
+    installments_remaining: effectiveRemaining(
+      Number(i.start_month), Number(i.start_year),
+      Number(i.installments_total), Number(i.installments_remaining),
+      referenceMonth, referenceYear,
+    ),
+    start_month: Number(i.start_month),
+    start_year: Number(i.start_year),
+  }))
 
   // ── Schedule unificado: empréstimos + parcelas de cartão por mês fiscal ──
   const loanPaymentsByMonth = buildDebtSchedule(loans, installments, referenceMonth, referenceYear)
