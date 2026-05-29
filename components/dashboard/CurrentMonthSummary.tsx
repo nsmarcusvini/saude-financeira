@@ -125,10 +125,10 @@ export function CurrentMonthSummary({ rows, selectedMonth }: CurrentMonthSummary
             )}
           </div>
           <div className="space-y-0.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Empréstimos</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Parcelas</p>
             <p className="text-sm font-semibold tabular-nums text-orange-600">{formatBRL(row.loanPayments)}</p>
             {row.income > 0 && row.loanPayments > 0 && (
-              <p className="text-[10px] text-muted-foreground">{formatPct(row.loanPayments / row.income)} da renda</p>
+              <p className="text-[10px] text-muted-foreground">{formatPct(row.loanPayments / row.income)} da renda · empr. + cartão</p>
             )}
           </div>
           <div className="space-y-0.5">
