@@ -1,0 +1,22 @@
+{
+  "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/(auth)/signup/page": "app/(auth)/signup/page.js",
+  "/api/entries/route": "app/api/entries/route.js",
+  "/api/expenses/route": "app/api/expenses/route.js",
+  "/api/dashboard/route": "app/api/dashboard/route.js",
+  "/api/fiscal-years/route": "app/api/fiscal-years/route.js",
+  "/api/cartoes/route": "app/api/cartoes/route.js",
+  "/api/loans/route": "app/api/loans/route.js",
+  "/api/parcelas/route": "app/api/parcelas/route.js",
+  "/api/projection/route": "app/api/projection/route.js",
+  "/auth/callback/route": "app/auth/callback/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/page": "app/page.js",
+  "/(app)/cartoes/page": "app/(app)/cartoes/page.js",
+  "/(app)/configuracoes/page": "app/(app)/configuracoes/page.js",
+  "/(app)/emprestimos/page": "app/(app)/emprestimos/page.js",
+  "/(app)/saidas/page": "app/(app)/saidas/page.js",
+  "/(app)/projecao/page": "app/(app)/projecao/page.js",
+  "/(app)/entradas/page": "app/(app)/entradas/page.js",
+  "/(app)/dashboard/page": "app/(app)/dashboard/page.js"
+}

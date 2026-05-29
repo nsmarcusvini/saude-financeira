@@ -59,8 +59,8 @@ export default function CartoesPage() {
     setLoading(false)
   }, [fiscalYearId, compMonth, compYear])
 
-  const statusOf = (id: string): PaymentStatus | null =>
-    payments.find((p) => p.ref_id === id)?.status ?? null
+  const paymentOf = (id: string) => payments.find((p) => p.ref_id === id)
+  const statusOf  = (id: string): PaymentStatus | null => paymentOf(id)?.status ?? null
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
@@ -179,6 +179,7 @@ export default function CartoesPage() {
                           competenceMonth={compMonth}
                           competenceYear={compYear}
                           currentStatus={statusOf(card.id)}
+                          currentPaymentId={paymentOf(card.id)?.id ?? null}
                           variant={statusOf(card.id) ? 'badge' : 'button'}
                           onDone={fetchAll}
                         />

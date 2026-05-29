@@ -8,3 +8,11 @@ build/
 
 # Local Netlify folder
 .netlify
+
+# Service worker (gerado pelo Serwist no build, não commitar)
+public/sw.js
+public/sw.js.map
+"public/sw 2.js"
+
+# Pastas .next duplicadas geradas em dev
+".next 2/"

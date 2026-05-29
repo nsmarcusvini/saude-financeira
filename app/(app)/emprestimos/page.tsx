@@ -36,8 +36,8 @@ export default function EmprestimosPage() {
     setLoading(false)
   }, [fiscalYearId, compMonth, compYear])
 
-  const statusOf = (id: string): PaymentStatus | null =>
-    payments.find((p) => p.ref_id === id)?.status ?? null
+  const paymentOf = (id: string) => payments.find((p) => p.ref_id === id)
+  const statusOf  = (id: string): PaymentStatus | null => paymentOf(id)?.status ?? null
 
   useEffect(() => { fetchLoans() }, [fetchLoans])
 
@@ -94,6 +94,7 @@ export default function EmprestimosPage() {
                   competenceMonth={compMonth}
                   competenceYear={compYear}
                   currentStatus={statusOf(loan.id)}
+                  currentPaymentId={paymentOf(loan.id)?.id ?? null}
                   variant={statusOf(loan.id) ? 'badge' : 'button'}
                   onDone={fetchLoans}
                 />

@@ -94,12 +94,10 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  // Status de pagamento por referência (cartão/empréstimo) na competência atual
-  const statusOf = (refId: string): PaymentStatus | null =>
-    payments.find((p) => p.ref_id === refId)?.status ?? null
-
-  const paymentOf = (refId: string): PaymentEvent | null =>
-    payments.find((p) => p.ref_id === refId) ?? null
+  // Helpers de pagamento por referência na competência atual
+  const paymentOf = (refId: string): PaymentEvent | undefined =>
+    payments.find((p) => p.ref_id === refId)
+  const statusOf = (refId: string): PaymentStatus | null => paymentOf(refId)?.status ?? null
 
   const totalCurrentBill = cards.reduce((s, c) => s + Number(c.current_balance), 0)
   const totalMonthlyInstallments = allInstallments.reduce((s, i) => {
