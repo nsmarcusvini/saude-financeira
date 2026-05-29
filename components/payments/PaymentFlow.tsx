@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { formatBRL } from '@/lib/utils/currency'
-import { Check, CreditCard, XCircle, Layers, CheckCircle2, AlertCircle, Clock } from 'lucide-react'
+import { Check, CreditCard, XCircle, Layers, CheckCircle2, AlertCircle, Clock, Trash2 } from 'lucide-react'
 import type { PaymentRefType, PaymentStatus } from '@/types/financial'
 
 interface PaymentFlowProps {
@@ -15,6 +15,8 @@ interface PaymentFlowProps {
   competenceMonth: number
   competenceYear: number
   currentStatus?: PaymentStatus | null
+  /** id do registro em payment_events (necessário para poder desfazer) */
+  currentPaymentId?: string | null
   onDone?: () => void
   /** 'badge' mostra o status atual + editar; 'button' mostra só o botão de registrar */
   variant?: 'badge' | 'button'
@@ -28,7 +30,7 @@ const STATUS_META: Record<PaymentStatus, { label: string; cls: string; icon: Rea
 
 export function PaymentFlow({
   fiscalYearId, refType, refId, label, amountDue,
-  competenceMonth, competenceYear, currentStatus, onDone, variant = 'button',
+  competenceMonth, competenceYear, currentStatus, currentPaymentId, onDone, variant = 'button',
 }: PaymentFlowProps) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -48,6 +50,15 @@ export function PaymentFlow({
         amount: status === 'paid' ? amountDue : 0,
       }),
     })
+    setSaving(false)
+    setOpen(false)
+    onDone?.()
+  }
+
+  async function unregister() {
+    if (!currentPaymentId) return
+    setSaving(true)
+    await fetch(`/api/pagamentos?id=${currentPaymentId}`, { method: 'DELETE' })
     setSaving(false)
     setOpen(false)
     onDone?.()
@@ -124,6 +135,17 @@ export function PaymentFlow({
                 </button>
               ))}
             </div>
+
+            {currentPaymentId && (
+              <button
+                disabled={saving}
+                onClick={unregister}
+                className="w-full flex items-center justify-center gap-2 rounded-lg border border-dashed border-red-300 dark:border-red-800 px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-500/5 transition-colors disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Desfazer registro
+              </button>
+            )}
 
             <Button variant="ghost" className="w-full" onClick={() => setOpen(false)}>Cancelar</Button>
           </div>

@@ -98,6 +98,9 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
   const statusOf = (refId: string): PaymentStatus | null =>
     payments.find((p) => p.ref_id === refId)?.status ?? null
 
+  const paymentOf = (refId: string): PaymentEvent | null =>
+    payments.find((p) => p.ref_id === refId) ?? null
+
   const totalCurrentBill = cards.reduce((s, c) => s + Number(c.current_balance), 0)
   const totalMonthlyInstallments = allInstallments.reduce((s, i) => {
     const startAbs = Number(i.start_year) * 12 + Number(i.start_month)
@@ -293,6 +296,7 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
                         competenceMonth={compMonth}
                         competenceYear={compYear}
                         currentStatus={statusOf(card.id)}
+                        currentPaymentId={paymentOf(card.id)?.id ?? null}
                         variant={statusOf(card.id) ? 'badge' : 'button'}
                         onDone={fetchAll}
                       />
@@ -379,6 +383,7 @@ export function DashboardCreditCards({ fiscalYearId, monthlyIncome }: DashboardC
                         competenceMonth={compMonth}
                         competenceYear={compYear}
                         currentStatus={statusOf(loan.id)}
+                        currentPaymentId={paymentOf(loan.id)?.id ?? null}
                         variant={statusOf(loan.id) ? 'badge' : 'button'}
                         onDone={fetchAll}
                       />
