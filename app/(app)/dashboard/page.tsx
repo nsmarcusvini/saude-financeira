@@ -116,7 +116,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── 1. RESUMO DO MÊS: entradas vs saídas totais ── */}
-      <CurrentMonthSummary rows={kpis.monthlyFlow} selectedMonth={selectedMonth} />
+      <CurrentMonthSummary rows={kpis.monthlyFlow} selectedMonth={selectedMonth} forecast={kpis.forecast} />
 
       {/* ── 1b. PREVISÃO DE DESEMBOLSO: este mês + próximos ── */}
       <MonthlyForecast forecast={kpis.forecast} />
