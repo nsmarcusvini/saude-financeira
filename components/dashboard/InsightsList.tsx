@@ -1,67 +1,61 @@
 'use client'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Lightbulb, TrendingUp, ArrowRight, CheckCircle2, AlertTriangle, XCircle, Info } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  Lightbulb, Target, ArrowRight, CheckCircle2, AlertTriangle,
+  XCircle, Info, TrendingUp, Zap,
+} from 'lucide-react'
 import type { Insight, InsightType, StructuredInsights } from '@/types/financial'
 
-const TYPE_CONFIG: Record<InsightType, { icon: React.ReactNode; className: string; dot: string }> = {
+const TYPE_CONFIG: Record<InsightType, {
+  icon: React.ReactNode
+  bg: string
+  border: string
+  text: string
+}> = {
   success: {
-    icon: <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />,
-    className: 'text-green-700 dark:text-green-400',
-    dot: 'bg-green-500',
+    icon: <CheckCircle2 className="h-4 w-4 shrink-0" />,
+    bg: 'bg-green-500/8',
+    border: 'border-green-500/20',
+    text: 'text-green-700 dark:text-green-400',
   },
   warning: {
-    icon: <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />,
-    className: 'text-yellow-700 dark:text-yellow-400',
-    dot: 'bg-yellow-500',
+    icon: <AlertTriangle className="h-4 w-4 shrink-0" />,
+    bg: 'bg-yellow-500/8',
+    border: 'border-yellow-500/20',
+    text: 'text-yellow-700 dark:text-yellow-400',
   },
   danger: {
-    icon: <XCircle className="h-4 w-4 shrink-0 mt-0.5" />,
-    className: 'text-red-700 dark:text-red-400',
-    dot: 'bg-red-500',
+    icon: <XCircle className="h-4 w-4 shrink-0" />,
+    bg: 'bg-red-500/8',
+    border: 'border-red-500/20',
+    text: 'text-red-700 dark:text-red-400',
   },
   action: {
-    icon: <ArrowRight className="h-4 w-4 shrink-0 mt-0.5" />,
-    className: 'text-primary dark:text-primary',
-    dot: 'bg-primary',
+    icon: <ArrowRight className="h-4 w-4 shrink-0" />,
+    bg: 'bg-primary/8',
+    border: 'border-primary/20',
+    text: 'text-primary',
   },
   tip: {
-    icon: <Info className="h-4 w-4 shrink-0 mt-0.5" />,
-    className: 'text-muted-foreground',
-    dot: 'bg-muted-foreground',
+    icon: <Info className="h-4 w-4 shrink-0" />,
+    bg: 'bg-muted/50',
+    border: 'border-border',
+    text: 'text-muted-foreground',
   },
 }
 
-function InsightItem({ insight }: { insight: Insight }) {
-  const config = TYPE_CONFIG[insight.type]
+function InsightCard({ insight, index }: { insight: Insight; index?: number }) {
+  const cfg = TYPE_CONFIG[insight.type]
   return (
-    <li className={`flex gap-2.5 text-sm ${config.className}`}>
-      {config.icon}
-      <span>{insight.text}</span>
-    </li>
-  )
-}
-
-function Section({ title, icon, items, emptyText }: {
-  title: string
-  icon: React.ReactNode
-  items: Insight[]
-  emptyText?: string
-}) {
-  if (items.length === 0 && !emptyText) return null
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        {icon}
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
+    <div className={`flex gap-3 rounded-lg border p-3 text-sm ${cfg.bg} ${cfg.border}`}>
+      <span className={`mt-0.5 ${cfg.text}`}>{cfg.icon}</span>
+      <div className="flex-1 min-w-0">
+        {index !== undefined && (
+          <span className={`text-[10px] font-bold mr-1.5 ${cfg.text}`}>{index + 1}.</span>
+        )}
+        <span className={cfg.text}>{insight.text}</span>
       </div>
-      {items.length > 0 ? (
-        <ul className="space-y-2.5 pl-1">
-          {items.map((insight, i) => <InsightItem key={i} insight={insight} />)}
-        </ul>
-      ) : (
-        <p className="text-xs text-muted-foreground pl-1">{emptyText}</p>
-      )}
     </div>
   )
 }
@@ -72,70 +66,81 @@ interface InsightsListProps {
 }
 
 export function InsightsList({ insights, structuredInsights }: InsightsListProps) {
-  if (structuredInsights) {
-    const { diagnosis, nextSteps, savingsTips } = structuredInsights
-    const hasContent = diagnosis.length > 0 || nextSteps.length > 0 || savingsTips.length > 0
-    if (!hasContent) return null
-
+  if (!structuredInsights) {
+    if (insights.length === 0) return null
     return (
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Lightbulb className="h-4 w-4 text-amber-500" />
-            Insights e dicas
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <Section
-            title="Diagnóstico atual"
-            icon={<CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />}
-            items={diagnosis}
-          />
-          {nextSteps.length > 0 && (
-            <>
-              <div className="border-t border-border" />
-              <Section
-                title="Próximos passos"
-                icon={<ArrowRight className="h-3.5 w-3.5 text-primary" />}
-                items={nextSteps}
-              />
-            </>
-          )}
-          {savingsTips.length > 0 && (
-            <>
-              <div className="border-t border-border" />
-              <Section
-                title="Dicas de economia"
-                icon={<TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />}
-                items={savingsTips}
-              />
-            </>
-          )}
+        <CardContent className="pt-5 space-y-2">
+          {insights.map((text, i) => (
+            <div key={i} className="flex gap-2.5 text-sm text-muted-foreground">
+              <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+              {text}
+            </div>
+          ))}
         </CardContent>
       </Card>
     )
   }
 
-  // Fallback para formato legado (string[])
-  if (insights.length === 0) return null
+  const { diagnosis, nextSteps, savingsTips } = structuredInsights
+  const hasContent = diagnosis.length > 0 || nextSteps.length > 0 || savingsTips.length > 0
+  if (!hasContent) return null
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <Lightbulb className="h-4 w-4 text-amber-500" />
-          Insights automáticos
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ul className="space-y-2">
-          {insights.map((text, i) => (
-            <li key={i} className="flex gap-2.5 text-sm text-muted-foreground">
-              <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-              {text}
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      {/* ── DIAGNÓSTICO ── */}
+      {diagnosis.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10">
+              <Target className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <h3 className="text-sm font-semibold">Diagnóstico atual</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {diagnosis.map((insight, i) => (
+              <InsightCard key={i} insight={insight} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── PRÓXIMOS PASSOS ── */}
+      {nextSteps.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10">
+              <Zap className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <h3 className="text-sm font-semibold">Próximos passos</h3>
+            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+              ação recomendada
+            </span>
+          </div>
+          <div className="space-y-2">
+            {nextSteps.map((insight, i) => (
+              <InsightCard key={i} insight={insight} index={i} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── DICAS DE ECONOMIA ── */}
+      {savingsTips.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/10">
+              <Lightbulb className="h-3.5 w-3.5 text-amber-600" />
+            </div>
+            <h3 className="text-sm font-semibold">Dicas de economia</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {savingsTips.map((insight, i) => (
+              <InsightCard key={i} insight={insight} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

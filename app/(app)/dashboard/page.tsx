@@ -126,80 +126,114 @@ export default function DashboardPage() {
         <DashboardCreditCards fiscalYearId={fiscalYearId} monthlyIncome={avgMonthlyIncome} />
       )}
 
-      {/* ── 2. KPIs DE SAÚDE FINANCEIRA ── */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Saúde financeira</h2>
+      {/* ── SAÚDE FINANCEIRA ── */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10">
+            <TrendingUp className="h-3.5 w-3.5 text-primary" />
+          </div>
+          <h2 className="text-sm font-semibold">Saúde financeira</h2>
+        </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Grupo 1: Receita e resultado */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiCard
             label="Renda mensal"
             value={formatBRL(avgMonthlyIncome)}
             description={`${formatBRL(kpis.annualIncome)} no ano`}
-            icon={<TrendingUp className="h-5 w-5" />}
+            icon={<TrendingUp className="h-4 w-4" />}
+            accent="bg-blue-500"
           />
           <KpiCard
             label="Sobra mensal"
             value={formatBRL(avgMonthlySurplus)}
             description="Renda − despesas − parcelas"
             status={surplusStatus}
-            icon={<PiggyBank className="h-5 w-5" />}
+            icon={<PiggyBank className="h-4 w-4" />}
           />
           <KpiCard
             label="Taxa de poupança"
             value={formatPct(kpis.savingsRate)}
             description="Meta: ≥ 20%"
             status={kpis.savingsRateStatus}
-            icon={<PiggyBank className="h-5 w-5" />}
+            icon={<PiggyBank className="h-4 w-4" />}
+            progress={kpis.savingsRate}
+            progressMax={0.20}
+            progressLabel={kpis.savingsRate >= 0.20 ? 'Meta atingida' : `Faltam ${formatPct(0.20 - kpis.savingsRate)} para a meta`}
           />
           <KpiCard
             label="Patrimônio em 5 anos"
             value={formatBRL(kpis.projectedPatrimony5y)}
             description="Projeção com premissas atuais"
-            icon={<LineChart className="h-5 w-5" />}
+            icon={<LineChart className="h-4 w-4" />}
+            accent="bg-violet-500"
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Grupo 2: Estrutura de gastos */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiCard
             label="Gastos fixos"
             value={formatPct(kpis.fixedExpensesPct)}
             description="Ideal ≤ 50% da renda"
             status={kpis.fixedExpensesStatus}
-            icon={<TrendingDown className="h-5 w-5" />}
+            icon={<TrendingDown className="h-4 w-4" />}
+            progress={kpis.fixedExpensesPct}
+            progressMax={1}
           />
           <KpiCard
             label="Gastos variáveis"
             value={formatPct(kpis.variableExpensesPct)}
             description="Ideal ≤ 30% da renda"
+            status={kpis.variableExpensesPct > 0.30 ? 'attention' : kpis.variableExpensesPct > 0 ? 'healthy' : undefined}
+            progress={kpis.variableExpensesPct}
+            progressMax={1}
           />
           <KpiCard
             label="Comprometimento dívidas"
             value={formatPct(kpis.debtCommitmentPct)}
             description="Parcelas / renda mensal"
             status={kpis.debtCommitmentStatus}
+            progress={kpis.debtCommitmentPct}
+            progressMax={0.50}
+            progressLabel={`Limite saudável: 30% — você está em ${formatPct(kpis.debtCommitmentPct)}`}
           />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <KpiCard
             label="Reserva de emergência"
             value={kpis.reserveMonths > 0 ? `${kpis.reserveMonths.toFixed(1)} meses` : '—'}
-            description={kpis.reserveMonths > 0 ? 'Meta: 6 a 12 meses' : 'Defina seu patrimônio na Projeção'}
+            description={kpis.reserveMonths > 0 ? 'Meta: 6 a 12 meses' : 'Informe seu patrimônio em Projeção'}
             status={kpis.reserveMonths > 0 ? reserveStatus(kpis.reserveMonths) : undefined}
-            icon={<Shield className="h-5 w-5" />}
+            icon={<Shield className="h-4 w-4" />}
+            progress={kpis.reserveMonths > 0 ? kpis.reserveMonths : undefined}
+            progressMax={12}
+            progressLabel={kpis.reserveMonths > 0 ? `Meta: 6 meses — você tem ${kpis.reserveMonths.toFixed(1)}` : undefined}
           />
         </div>
       </div>
 
-      {/* ── 3. FLUXO MENSAL ── */}
+      {/* ── FLUXO MENSAL ── */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Fluxo mensal</h2>
+        <div className="flex items-center gap-2">
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10">
+            <LineChart className="h-3.5 w-3.5 text-primary" />
+          </div>
+          <h2 className="text-sm font-semibold">Fluxo mensal</h2>
+          <span className="text-[10px] text-muted-foreground">Jan – Dez</span>
+        </div>
         <FlowChart rows={kpis.monthlyFlow} />
         <MonthlyFlowTable rows={kpis.monthlyFlow} />
       </div>
 
-      {/* ── 4. INSIGHTS ── */}
-      <InsightsList insights={kpis.insights} structuredInsights={kpis.structuredInsights} />
+      {/* ── INSIGHTS E DICAS ── */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/10">
+            <Shield className="h-3.5 w-3.5 text-amber-600" />
+          </div>
+          <h2 className="text-sm font-semibold">Insights e dicas</h2>
+        </div>
+        <InsightsList insights={kpis.insights} structuredInsights={kpis.structuredInsights} />
+      </div>
     </div>
   )
 }
