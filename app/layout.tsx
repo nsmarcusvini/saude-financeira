@@ -11,8 +11,8 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'Saúde Financeira',
-  description: 'Monitore e melhore sua saúde financeira',
+  title: 'InnovaHealthFinance',
+  description: 'Monitore e melhore sua saúde financeira com InnovaHealthFinance',
   manifest: "/manifest.json",
   icons: {
     icon: "/icon.svg",

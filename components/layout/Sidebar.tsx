@@ -37,8 +37,8 @@ export function Sidebar() {
           <Heart className="h-4 w-4 text-white" />
         </div>
         <div>
-          <p className="text-sm font-semibold leading-none">Saúde Financeira</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Painel pessoal</p>
+          <p className="text-sm font-semibold leading-none">InnovaHealthFinance</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Saúde Financeira</p>
         </div>
       </div>
 

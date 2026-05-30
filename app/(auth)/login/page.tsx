@@ -45,8 +45,8 @@ export default function LoginPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary mb-3">
             <Heart className="h-5 w-5 text-white" />
           </div>
-          <h1 className="text-xl font-semibold">Saúde Financeira</h1>
-          <p className="text-sm text-muted-foreground mt-1">Acesse sua conta</p>
+          <h1 className="text-xl font-semibold">InnovaHealthFinance</h1>
+          <p className="text-sm text-muted-foreground mt-1">Acesse seu Painel de Saúde Financeira</p>
         </div>
 
         <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
